@@ -40,6 +40,7 @@ struct Cli {
 enum Commands {
     /// Train a new Word2Vec model
     Train {
+        /// Path to a UTF-8 plaintext corpus file (compressed files like .gz are not decompressed)
         #[arg(short, long, default_value = "lee_background.cor")]
         corpus: PathBuf,
         #[arg(short, long, default_value = "100")]
@@ -467,4 +468,45 @@ fn compare_models(rust_model_path: PathBuf, c_model_path: PathBuf, max_words: Op
     //     .expect("Failed to write embeddings to file");
 
     println!("Embeddings exported successfully!");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::get_corpus;
+    use std::{
+        env, fs,
+        path::PathBuf,
+        process,
+        time::{SystemTime, UNIX_EPOCH},
+    };
+
+    fn temp_file_path(suffix: &str) -> PathBuf {
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("time went backwards")
+            .as_nanos();
+        env::temp_dir().join(format!("word2vec-{suffix}-{}-{now}", process::id()))
+    }
+
+    #[test]
+    fn get_corpus_reads_plaintext_utf8_file() {
+        let path = temp_file_path("plain");
+        fs::write(&path, "hello world").expect("failed to write temporary corpus");
+
+        let corpus = get_corpus(&path);
+        assert_eq!(corpus, "hello world");
+
+        fs::remove_file(path).expect("failed to remove temporary corpus");
+    }
+
+    #[test]
+    fn get_corpus_panics_for_binary_input() {
+        let path = temp_file_path("binary");
+        fs::write(&path, [0x1f, 0x8b, 0x08, 0x00, 0x00]).expect("failed to write binary corpus");
+
+        let result = std::panic::catch_unwind(|| get_corpus(&path));
+        assert!(result.is_err());
+
+        fs::remove_file(path).expect("failed to remove temporary corpus");
+    }
 }

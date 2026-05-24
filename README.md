@@ -36,6 +36,10 @@ To run the rust model
 cargo run --release -- train
 ```
 
+Corpus input for training is read as a UTF-8 plaintext file. The CLI currently opens the file
+directly and reads it with `read_to_string`, so compressed inputs (for example `.gz`) are not
+decompressed automatically.
+
 Run the binary and check the help menu to see what optios are available from the CLI
 ```bash
 cargo run
